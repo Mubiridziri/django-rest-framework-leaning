@@ -364,4 +364,108 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (IsOwnerOrReadOnly, )
 ```
 
+## Create Authentication with help Djoser Library
+
+1. Install to your virtual env
+
+```bash
+pip install djoser
+```
+
+2. Update `settings.py`
+
+```python
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'rest_framework',
+    'rest_framework.authtoken', # <-- and this for token auth
+    'Blog.apps.BlogConfig',
+    'djoser', # <-- like this
+]
+```
+
+3. Update your URLs
+
+`<project_name>/urls.py`
+
+```python
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/v1/drf-auth/', include('rest_framework.urls')),
+    path('api/v1/blog/', include('Blog.urls'), name="Blog API"),
+    path('api/v1/auth/', include('djoser.urls'), name="Auth with Djoser"),
+    path('api/v1/auth_token/', include('djoser.urls.authtoken'), name="Token Auth with Djoser"),
+]
+
+```
+
+3. Migrate
+
+```bash
+./manage.py migrate
+```
+
+### Preparing Token Auth
+
+4. Update your view
+
+```python
+from rest_framework import generics
+from Blog.serializers import PostDetailSerializer, PostListSerializer
+from Blog.models import Post
+from Blog.permissions import IsOwnerOrReadOnly
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication # <-- Import this
+
+
+class PostCreateView(generics.CreateAPIView):
+    serializer_class = PostDetailSerializer,
+    authentication_classes = (TokenAuthentication, ) # <-- select your auth strategy for specific view
+    permission_classes = (IsAuthenticated,)
+
+
+class PostListView(generics.ListAPIView):
+    serializer_class = PostListSerializer
+    queryset = Post.objects.all()
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated, )
+
+
+class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = PostDetailSerializer
+    queryset = Post.objects.all()
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsOwnerOrReadOnly, )
+```
+**WARNING:** Also you can set global rule about auth method and remove `authentication_classes` from views, just add this to `settings.py` configuration:
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    )
+}
+```
+
+When request need add Header with name `Authorization` and value `Token <your token>`.
+
+Example like curl:
+
+```bash
+curl --request GET \
+  --url http://localhost:8000/api/v1/blog/posts/all \
+  --header 'Authorization: Token 552e3dd88b7aeefe9637de1a639602f9652050aa'
+```
+
 
