@@ -3,6 +3,8 @@ from Blog.models import Post
 
 
 class PostDetailSerializer(serializers.ModelSerializer):
+    author = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
     class Meta:
         model = Post
         fields = '__all__'

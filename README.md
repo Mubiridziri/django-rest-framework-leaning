@@ -276,5 +276,92 @@ path('posts/detail/<int:pk>', PostDetailView.as_view(), name="View, Update and D
 Allow: GET, PUT, PATCH, DELETE, HEAD, OPTIONS
 
 
+## Hidden Fields
+
+Update exist PostDetailSerializer like this:
+
+```python
+class PostDetailSerializer(serializers.ModelSerializer):
+    author = serializers.HiddenField(default=serializers.CurrentUserDefault()) # <-- New Line
+    
+    class Meta:
+        model = Post
+        fields = '__all__'
+```
+
+## Implement Basic Rest Authorization from Django
+
+Add code like this to <project_name>/urls.py
+
+```python
+path('api/v1/drf-auth/', include('rest_framework.urls')),
+```
+
+## Permissions
+
+Create file `<app_name>/permissions.py` and write base permission:
+
+```python
+from rest_framework import permissions
+
+
+class IsOwnerOrReadOnly(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return obj.author == request.user
+
+```
+
+And update your view:
+
+```python
+from rest_framework import generics
+from Blog.serializers import PostDetailSerializer, PostListSerializer
+from Blog.models import Post
+from Blog.permissions import IsOwnerOrReadOnly # <--- new import
+
+
+class PostCreateView(generics.CreateAPIView):
+    serializer_class = PostDetailSerializer
+
+
+class PostListView(generics.ListAPIView):
+    serializer_class = PostListSerializer
+    queryset = Post.objects.all()
+
+
+class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = PostDetailSerializer
+    queryset = Post.objects.all()
+    permission_classes = (IsOwnerOrReadOnly, ) # <-- connect your permission
+```
+
+## View Only Full Authenticated
+
+```python
+from rest_framework import generics
+from Blog.serializers import PostDetailSerializer, PostListSerializer
+from Blog.models import Post
+from Blog.permissions import IsOwnerOrReadOnly
+from rest_framework.permissions import IsAuthenticated # <-- Import django permission
+
+
+class PostCreateView(generics.CreateAPIView):
+    serializer_class = PostDetailSerializer,
+    permission_classes = (IsAuthenticated,) # <-- connect this permission to view
+
+
+class PostListView(generics.ListAPIView):
+    serializer_class = PostListSerializer
+    queryset = Post.objects.all()
+    permission_classes = (IsAuthenticated, )
+
+
+class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = PostDetailSerializer
+    queryset = Post.objects.all()
+    permission_classes = (IsOwnerOrReadOnly, )
+```
 
 
